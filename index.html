@@ -623,12 +623,22 @@ async function findNewCompanies() {
   try {
     const colIdx = parseInt(document.getElementById('column-select').value);
 
-    // Extract domains from Clay CSV
+    // Extract domains AND company names from Clay CSV
     const clayDomains = new Set();
+    const clayNames = new Set();
+    // Also try to find a company_name column
+    const nameIdx = clayData.headers.findIndex(h => {
+      const l = h.toLowerCase();
+      return l === 'company_name' || l === 'company name' || l === 'name' || l === 'company';
+    });
     clayData.rows.forEach(row => {
       const val = row[colIdx] || '';
       const domain = extractDomain(val);
       if (domain) clayDomains.add(domain);
+      if (nameIdx >= 0) {
+        const name = (row[nameIdx] || '').trim().toLowerCase();
+        if (name) clayNames.add(name);
+      }
     });
 
     setStatus(`Found ${clayDomains.size.toLocaleString()} domains in your Clay table. Fetching all YC companies...`, false, 'whatsnew-status');
@@ -639,10 +649,16 @@ async function findNewCompanies() {
 
     const allYc = hits.map(companyToRow);
 
-    // Find companies whose domain is NOT in Clay
+    // Find companies that are NOT in Clay (match by domain, fallback to company name)
     newResults = allYc.filter(r => {
-      if (!r.domain) return true; // no domain = include it, user can decide
-      return !clayDomains.has(r.domain);
+      // If domain exists and matches, it's already in Clay
+      if (r.domain && clayDomains.has(r.domain)) return false;
+      // Fallback: if company name matches, it's already in Clay
+      if (r.company_name && clayNames.has(r.company_name.toLowerCase())) return false;
+      // If no domain and no name match, skip it (not useful without a domain)
+      if (!r.domain) return false;
+      // Truly new
+      return true;
     });
 
     // Show stats

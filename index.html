@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YC Company Scraper</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #1a1a1a; }
+
+    .header { background: #ff6600; color: white; padding: 20px 32px; }
+    .header h1 { font-size: 22px; font-weight: 600; }
+    .header p { font-size: 14px; opacity: 0.9; margin-top: 4px; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+
+    .tabs { display: flex; gap: 0; margin-bottom: 24px; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .tab { flex: 1; padding: 14px 20px; text-align: center; font-size: 15px; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; color: #888; transition: all 0.15s; }
+    .tab:hover { color: #333; background: #fafafa; }
+    .tab.active { color: #ff6600; border-bottom-color: #ff6600; background: white; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .panel { background: white; border-radius: 10px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .panel h2 { font-size: 16px; margin-bottom: 16px; color: #333; }
+
+    .filter-group { margin-bottom: 20px; }
+    .filter-group > span.label { display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .checkbox-grid { display: flex; flex-wrap: wrap; gap: 6px; max-height: 200px; overflow-y: auto; padding: 4px; }
+    .checkbox-grid.tall { max-height: 300px; }
+
+    .chip { display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; border: 1.5px solid #ddd; border-radius: 20px; font-size: 13px; cursor: pointer; user-select: none; transition: all 0.15s; background: white; }
+    .chip:hover { border-color: #ff6600; background: #fff8f0; }
+    .chip input { display: none; }
+    .chip.selected { background: #ff6600; color: white; border-color: #ff6600; }
+    .chip .count { font-size: 11px; opacity: 0.7; }
+
+    .filter-actions { display: flex; gap: 8px; margin-bottom: 12px; }
+    .filter-actions button { font-size: 12px; padding: 4px 10px; border: 1px solid #ddd; border-radius: 4px; background: white; cursor: pointer; color: #666; }
+    .filter-actions button:hover { background: #f0f0f0; }
+
+    .search-box { width: 100%; padding: 10px 14px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 14px; margin-bottom: 8px; }
+    .search-box:focus { outline: none; border-color: #ff6600; }
+
+    .actions { margin-top: 24px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .btn { padding: 12px 28px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .btn-primary { background: #ff6600; color: white; }
+    .btn-primary:hover { background: #e55c00; }
+    .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-secondary { background: white; color: #333; border: 1.5px solid #ddd; }
+    .btn-secondary:hover { background: #f5f5f5; }
+    .btn-sm { padding: 8px 18px; font-size: 13px; }
+
+    .status { font-size: 14px; color: #666; }
+    .status.error { color: #d32f2f; }
+    .status.success { color: #2e7d32; }
+
+    .results { margin-top: 24px; background: white; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow: hidden; }
+    .results-header { padding: 16px 24px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .results-header h3 { font-size: 15px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #fafafa; text-align: left; padding: 10px 14px; font-weight: 600; color: #555; border-bottom: 1px solid #eee; position: sticky; top: 0; white-space: nowrap; }
+    td { padding: 10px 14px; border-bottom: 1px solid #f5f5f5; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    tr:hover td { background: #fafafa; }
+    a { color: #ff6600; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .table-scroll { max-height: 500px; overflow-y: auto; }
+    .progress-bar { height: 3px; background: #eee; border-radius: 2px; overflow: hidden; margin-top: 8px; }
+    .progress-bar .fill { height: 100%; background: #ff6600; transition: width 0.3s; border-radius: 2px; }
+
+    .hidden { display: none; }
+
+    .upload-area { border: 2px dashed #ddd; border-radius: 10px; padding: 32px; text-align: center; cursor: pointer; transition: all 0.15s; margin-bottom: 20px; }
+    .upload-area:hover { border-color: #ff6600; background: #fff8f0; }
+    .upload-area.loaded { border-color: #4caf50; background: #f1f8e9; }
+    .upload-area.dragover { border-color: #ff6600; background: #fff3e0; }
+    .upload-area input { display: none; }
+    .upload-area .icon { font-size: 32px; margin-bottom: 8px; }
+    .upload-area p { font-size: 14px; color: #666; margin-top: 4px; }
+
+    .column-select { padding: 10px 14px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 14px; background: white; min-width: 200px; }
+    .column-select:focus { outline: none; border-color: #ff6600; }
+
+    .stats-row { display: flex; gap: 16px; margin: 20px 0; flex-wrap: wrap; }
+    .stat-card { background: #f8f9fa; border-radius: 8px; padding: 16px 20px; flex: 1; min-width: 140px; }
+    .stat-card .number { font-size: 28px; font-weight: 700; color: #ff6600; }
+    .stat-card .label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+    .step { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+    .step-num { width: 28px; height: 28px; border-radius: 50%; background: #ff6600; color: white; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+    .step-num.done { background: #4caf50; }
+    .step-text { font-size: 14px; color: #555; padding-top: 3px; }
+    .step-text strong { color: #333; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>YC Company Scraper</h1>
+  <p>Export Y Combinator companies or find new ones not yet in your Clay table</p>
+</div>
+
+<div class="container">
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('export')">Export Companies</div>
+    <div class="tab" onclick="switchTab('whatsnew')">Find New Companies</div>
+  </div>
+
+  <!-- TAB 1: Export -->
+  <div class="tab-content active" id="tab-export">
+    <div class="panel">
+      <h2>Filters</h2>
+
+      <div class="filter-group">
+        <span class="label">Batch</span>
+        <div class="filter-actions">
+          <button onclick="selectAll('batch')">Select All</button>
+          <button onclick="clearAll('batch')">Clear All</button>
+        </div>
+        <div class="checkbox-grid" id="batch-filters"></div>
+      </div>
+
+      <div class="filter-group">
+        <span class="label">Industry</span>
+        <div class="filter-actions">
+          <button onclick="selectAll('industry')">Select All</button>
+          <button onclick="clearAll('industry')">Clear All</button>
+        </div>
+        <div class="checkbox-grid tall" id="industry-filters"></div>
+      </div>
+
+      <div class="filter-group">
+        <span class="label">Region</span>
+        <div class="filter-actions">
+          <button onclick="selectAll('region')">Select All</button>
+          <button onclick="clearAll('region')">Clear All</button>
+        </div>
+        <div class="checkbox-grid tall" id="region-filters"></div>
+      </div>
+
+      <div class="filter-group">
+        <span class="label">Company Status</span>
+        <div class="checkbox-grid" id="status-filters"></div>
+      </div>
+
+      <div class="filter-group">
+        <span class="label">Tags</span>
+        <input type="text" class="search-box" id="tag-search" placeholder="Search tags..." oninput="filterTags()">
+        <div class="filter-actions">
+          <button onclick="selectAll('tag')">Select All Visible</button>
+          <button onclick="clearAll('tag')">Clear All</button>
+        </div>
+        <div class="checkbox-grid tall" id="tag-filters"></div>
+      </div>
+
+      <div class="filter-group" style="display:flex;gap:24px;flex-wrap:wrap;">
+        <div class="chip" style="border-radius:8px;" onclick="this.querySelector('input').checked=!this.querySelector('input').checked">
+          <input type="checkbox" id="filter-hiring"> Is Hiring
+        </div>
+        <div class="chip" style="border-radius:8px;" onclick="this.querySelector('input').checked=!this.querySelector('input').checked">
+          <input type="checkbox" id="filter-top"> Top Company
+        </div>
+        <div class="chip" style="border-radius:8px;" onclick="this.querySelector('input').checked=!this.querySelector('input').checked">
+          <input type="checkbox" id="filter-nonprofit"> Nonprofit
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="scrape-btn" onclick="scrape()">Export to CSV</button>
+        <button class="btn btn-secondary" onclick="preview()">Preview (first 20)</button>
+        <span class="status" id="status"></span>
+      </div>
+      <div class="progress-bar hidden" id="progress"><div class="fill" id="progress-fill"></div></div>
+    </div>
+
+    <div class="results hidden" id="results">
+      <div class="results-header">
+        <h3 id="results-title">Results</h3>
+        <button class="btn btn-primary btn-sm" onclick="downloadCsv(allResults, 'yc_companies')">Download CSV</button>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Company</th><th>Domain</th><th>One-liner</th><th>Batch</th><th>Industry</th><th>Location</th><th>Status</th></tr>
+          </thead>
+          <tbody id="results-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: Find New Companies -->
+  <div class="tab-content" id="tab-whatsnew">
+    <div class="panel">
+      <h2>Find New YC Companies</h2>
+      <p style="color:#666;margin-bottom:20px;">Upload your Clay export CSV and we'll find all YC companies that are <strong>not yet in your table</strong>.</p>
+
+      <!-- Step 1 -->
+      <div class="step">
+        <div class="step-num" id="step1-num">1</div>
+        <div class="step-text"><strong>Upload your Clay CSV export</strong></div>
+      </div>
+
+      <div class="upload-area" id="upload-area"
+           onclick="document.getElementById('clay-file').click()"
+           ondragover="event.preventDefault();this.classList.add('dragover')"
+           ondragleave="this.classList.remove('dragover')"
+           ondrop="event.preventDefault();this.classList.remove('dragover');handleDrop(event)">
+        <input type="file" id="clay-file" accept=".csv" onchange="loadClayCsv(this)">
+        <div class="icon">&#128196;</div>
+        <div id="upload-label"><strong>Click to upload</strong> or drag & drop your Clay CSV here</div>
+        <p>Supports .csv files exported from Clay</p>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step hidden" id="step2">
+        <div class="step-num">2</div>
+        <div class="step-text"><strong>Select the column with domain or website</strong></div>
+      </div>
+      <div class="hidden" id="column-picker" style="margin-bottom:20px;margin-left:40px;">
+        <select class="column-select" id="column-select" onchange="onColumnSelected()">
+          <option value="">-- Pick a column --</option>
+        </select>
+        <div id="column-preview" style="font-size:12px;color:#888;margin-top:8px;"></div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="actions hidden" id="step3-actions">
+        <button class="btn btn-primary" id="whatsnew-btn" onclick="findNewCompanies()" disabled>Find New Companies</button>
+        <span class="status" id="whatsnew-status"></span>
+      </div>
+      <div class="progress-bar hidden" id="whatsnew-progress"><div class="fill" id="whatsnew-progress-fill"></div></div>
+    </div>
+
+    <!-- Stats -->
+    <div class="hidden" id="whatsnew-stats">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="number" id="stat-clay">-</div>
+          <div class="label">In your Clay table</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="stat-yc">-</div>
+          <div class="label">Total YC companies</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="stat-new" style="color:#4caf50;">-</div>
+          <div class="label">New companies found</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results table -->
+    <div class="results hidden" id="whatsnew-results">
+      <div class="results-header">
+        <h3 id="whatsnew-results-title">New Companies</h3>
+        <button class="btn btn-primary btn-sm" onclick="downloadCsv(newResults, 'yc_new_companies')">Download New Companies CSV</button>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Company</th><th>Domain</th><th>One-liner</th><th>Batch</th><th>Industry</th><th>Location</th><th>Status</th></tr>
+          </thead>
+          <tbody id="whatsnew-results-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const ALGOLIA_APP_ID = '45BWZJ1SGC';
+const ALGOLIA_API_KEY = 'NzllNTY5MzJiZGM2OTY2ZTQwMDEzOTNhYWZiZGRjODlhYzVkNjBmOGRjNzJiMWM4ZTU0ZDlhYTZjOTJiMjlhMWFuYWx5dGljc1RhZ3M9eWNkYyZyZXN0cmljdEluZGljZXM9WUNDb21wYW55X3Byb2R1Y3Rpb24lMkNZQ0NvbXBhbnlfQnlfTGF1bmNoX0RhdGVfcHJvZHVjdGlvbiZ0YWdGaWx0ZXJzPSU1QiUyMnljZGNfcHVibGljJTIyJTVE';
+const ALGOLIA_URL = `https://${ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/YCCompany_production/query`;
+
+let allResults = [];
+let newResults = [];
+let facetsData = {};
+let clayData = { headers: [], rows: [] };
+
+// ─── Tabs ───
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelector(`#tab-${tab}`).classList.add('active');
+  document.querySelectorAll('.tab')[tab === 'export' ? 0 : 1].classList.add('active');
+}
+
+// ─── Algolia ───
+async function algoliaQuery(params) {
+  const resp = await fetch(ALGOLIA_URL, {
+    method: 'POST',
+    headers: { 'x-algolia-application-id': ALGOLIA_APP_ID, 'x-algolia-api-key': ALGOLIA_API_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  if (!resp.ok) throw new Error(`Algolia error: ${resp.status}`);
+  return resp.json();
+}
+
+// ─── Facets ───
+async function loadFacets() {
+  setStatus('Loading filters...', false, 'status');
+  try {
+    const data = await algoliaQuery({ query: '', hitsPerPage: 0, facets: ['batch', 'industries', 'regions', 'tags', 'status'] });
+    facetsData = data.facets;
+    renderFacet('batch', facetsData.batch, 'batch-filters', sortBatches);
+    renderFacet('industry', facetsData.industries, 'industry-filters');
+    renderFacet('region', facetsData.regions, 'region-filters');
+    renderFacet('status', facetsData.status, 'status-filters');
+    renderFacet('tag', facetsData.tags, 'tag-filters');
+    setStatus(`Ready — ${data.nbHits.toLocaleString()} total companies`, false, 'status');
+  } catch (e) {
+    setStatus('Error loading filters: ' + e.message, true, 'status');
+  }
+}
+
+function sortBatches(entries) {
+  const order = { 'Summer': 0, 'Spring': 1, 'Fall': 2, 'Winter': 3 };
+  return entries.sort((a, b) => {
+    const [aS, aY] = a[0].split(' ');
+    const [bS, bY] = b[0].split(' ');
+    if (bY !== aY) return (parseInt(bY) || 0) - (parseInt(aY) || 0);
+    return (order[aS] ?? 9) - (order[bS] ?? 9);
+  });
+}
+
+function renderFacet(name, facetObj, containerId, sortFn) {
+  const container = document.getElementById(containerId);
+  let entries = Object.entries(facetObj || {});
+  if (sortFn) entries = sortFn(entries);
+  else entries.sort((a, b) => b[1] - a[1]);
+  container.innerHTML = entries.map(([value, count]) => `
+    <div class="chip" data-group="${name}" data-value="${value}">
+      <input type="checkbox" value="${value}">
+      <span>${value}</span>
+      <span class="count">${count}</span>
+    </div>
+  `).join('');
+  container.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const input = chip.querySelector('input');
+      input.checked = !input.checked;
+      chip.classList.toggle('selected', input.checked);
+    });
+  });
+}
+
+function selectAll(group) {
+  document.querySelectorAll(`.chip[data-group="${group}"]`).forEach(chip => {
+    if (group === 'tag' && chip.style.display === 'none') return;
+    chip.querySelector('input').checked = true;
+    chip.classList.add('selected');
+  });
+}
+function clearAll(group) {
+  document.querySelectorAll(`.chip[data-group="${group}"]`).forEach(chip => {
+    chip.querySelector('input').checked = false;
+    chip.classList.remove('selected');
+  });
+}
+function filterTags() {
+  const s = document.getElementById('tag-search').value.toLowerCase();
+  document.querySelectorAll('.chip[data-group="tag"]').forEach(chip => {
+    chip.style.display = chip.dataset.value.toLowerCase().includes(s) ? '' : 'none';
+  });
+}
+function getSelectedValues(group) {
+  return [...document.querySelectorAll(`.chip[data-group="${group}"] input:checked`)].map(i => i.value);
+}
+function buildFacetFilters() {
+  const f = [];
+  const b = getSelectedValues('batch'), i = getSelectedValues('industry'), r = getSelectedValues('region'), s = getSelectedValues('status'), t = getSelectedValues('tag');
+  if (b.length) f.push(b.map(v => `batch:${v}`));
+  if (i.length) f.push(i.map(v => `industries:${v}`));
+  if (r.length) f.push(r.map(v => `regions:${v}`));
+  if (s.length) f.push(s.map(v => `status:${v}`));
+  if (t.length) f.push(t.map(v => `tags:${v}`));
+  if (document.getElementById('filter-hiring').checked) f.push(['isHiring:true']);
+  if (document.getElementById('filter-top').checked) f.push(['top_company:true']);
+  if (document.getElementById('filter-nonprofit').checked) f.push(['nonprofit:true']);
+  return f;
+}
+
+// ─── Data helpers ───
+function extractDomain(website) {
+  if (!website) return '';
+  try {
+    const url = website.includes('://') ? website : `https://${website}`;
+    let d = new URL(url).hostname;
+    if (d.startsWith('www.')) d = d.slice(4);
+    return d.toLowerCase();
+  } catch { return website.toLowerCase().trim(); }
+}
+
+function companyToRow(c) {
+  return {
+    id: c.objectID,
+    company_name: c.name || '',
+    domain: extractDomain(c.website),
+    website: (c.website || '').trim(),
+    one_liner: c.one_liner || '',
+    batch: c.batch || '',
+    industry: c.subindustry || c.industry || '',
+    location: c.all_locations || '',
+    tags: (c.tags || []).join(', '),
+    team_size: c.team_size || '',
+    status: c.status || '',
+    yc_url: `https://www.ycombinator.com/companies/${c.slug || ''}`,
+  };
+}
+
+// ─── UI ───
+function setStatus(msg, isError, elId) {
+  const el = document.getElementById(elId || 'status');
+  el.textContent = msg;
+  el.className = 'status' + (isError ? ' error' : '');
+}
+function showProgress(pct, prefix) {
+  const bar = document.getElementById((prefix || '') + 'progress');
+  bar.classList.remove('hidden');
+  document.getElementById((prefix || '') + 'progress-fill').style.width = pct + '%';
+}
+function hideProgress(prefix) {
+  document.getElementById((prefix || '') + 'progress').classList.add('hidden');
+}
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+function renderTable(rows, tbodyId) {
+  document.getElementById(tbodyId).innerHTML = rows.map(r => `
+    <tr>
+      <td><a href="${r.yc_url}" target="_blank">${esc(r.company_name)}</a></td>
+      <td>${esc(r.domain)}</td>
+      <td title="${esc(r.one_liner)}">${esc(r.one_liner)}</td>
+      <td>${esc(r.batch)}</td>
+      <td>${esc(r.industry)}</td>
+      <td>${esc(r.location)}</td>
+      <td>${esc(r.status)}</td>
+    </tr>
+  `).join('');
+}
+
+// ─── Fetch all companies ───
+async function fetchAllWithFilters(facetFilters, statusEl, progressPrefix) {
+  const hits = [], seenIds = new Set(), PER_PAGE = 200;
+  const first = await algoliaQuery({ query: '', hitsPerPage: PER_PAGE, page: 0, facetFilters });
+  const total = first.nbHits;
+  first.hits.forEach(h => { if (!seenIds.has(h.objectID)) { seenIds.add(h.objectID); hits.push(h); } });
+
+  if (total <= 1000) {
+    for (let page = 1; page < first.nbPages; page++) {
+      showProgress(Math.round((hits.length / total) * 100), progressPrefix);
+      setStatus(`Fetching... ${hits.length.toLocaleString()} / ${total.toLocaleString()}`, false, statusEl);
+      const data = await algoliaQuery({ query: '', hitsPerPage: PER_PAGE, page, facetFilters });
+      data.hits.forEach(h => { if (!seenIds.has(h.objectID)) { seenIds.add(h.objectID); hits.push(h); } });
+    }
+  } else {
+    const batchFilter = facetFilters.find(f => Array.isArray(f) && f.some(v => v.startsWith('batch:')));
+    const batchList = batchFilter ? batchFilter.map(v => v.replace('batch:', '')) : Object.keys(facetsData.batch);
+    const nonBatchFilters = facetFilters.filter(f => !(Array.isArray(f) && f.some(v => v.startsWith('batch:'))));
+
+    for (let i = 0; i < batchList.length; i++) {
+      showProgress(Math.round((i / batchList.length) * 100), progressPrefix);
+      setStatus(`Fetching ${batchList[i]}... ${hits.length.toLocaleString()} so far`, false, statusEl);
+      const bf = [[`batch:${batchList[i]}`], ...nonBatchFilters];
+      let page = 0;
+      while (true) {
+        const data = await algoliaQuery({ query: '', hitsPerPage: PER_PAGE, page, facetFilters: bf });
+        data.hits.forEach(h => { if (!seenIds.has(h.objectID)) { seenIds.add(h.objectID); hits.push(h); } });
+        if (data.hits.length < PER_PAGE || page >= data.nbPages - 1) break;
+        page++;
+      }
+    }
+  }
+  return hits;
+}
+
+// ─── Export tab ───
+async function scrape() {
+  const btn = document.getElementById('scrape-btn');
+  btn.disabled = true;
+  allResults = [];
+  try {
+    const hits = await fetchAllWithFilters(buildFacetFilters(), 'status', '');
+    allResults = hits.map(companyToRow);
+    showProgress(100);
+    setStatus(`Done! ${allResults.length.toLocaleString()} companies.`, false, 'status');
+    downloadCsv(allResults, 'yc_companies');
+  } catch (e) {
+    setStatus('Error: ' + e.message, true, 'status');
+  } finally {
+    btn.disabled = false;
+    hideProgress();
+  }
+}
+
+async function preview() {
+  try {
+    setStatus('Loading preview...', false, 'status');
+    const data = await algoliaQuery({ query: '', hitsPerPage: 20, page: 0, facetFilters: buildFacetFilters() });
+    allResults = data.hits.map(companyToRow);
+    document.getElementById('results-title').textContent = `Preview — showing 20 of ${data.nbHits.toLocaleString()} companies`;
+    renderTable(allResults, 'results-body');
+    document.getElementById('results').classList.remove('hidden');
+    setStatus(`Previewing 20 of ${data.nbHits.toLocaleString()}`, false, 'status');
+  } catch (e) {
+    setStatus('Error: ' + e.message, true, 'status');
+  }
+}
+
+// ─── CSV parsing ───
+function parseCsv(text) {
+  const lines = [];
+  let current = '', inQuotes = false, row = [];
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { current += '"'; i++; }
+        else inQuotes = false;
+      } else {
+        current += ch;
+      }
+    } else {
+      if (ch === '"') { inQuotes = true; }
+      else if (ch === ',') { row.push(current.trim()); current = ''; }
+      else if (ch === '\n' || (ch === '\r' && text[i + 1] === '\n')) {
+        row.push(current.trim());
+        if (row.some(c => c !== '')) lines.push(row);
+        row = []; current = '';
+        if (ch === '\r') i++;
+      } else {
+        current += ch;
+      }
+    }
+  }
+  row.push(current.trim());
+  if (row.some(c => c !== '')) lines.push(row);
+
+  const headers = lines[0] || [];
+  const rows = lines.slice(1);
+  return { headers, rows };
+}
+
+// ─── What's New: Clay CSV upload ───
+function handleDrop(e) {
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.endsWith('.csv')) {
+    document.getElementById('clay-file').files = e.dataTransfer.files;
+    loadClayCsv({ files: [file] });
+  }
+}
+
+function loadClayCsv(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      clayData = parseCsv(e.target.result);
+
+      document.getElementById('upload-area').classList.add('loaded');
+      document.getElementById('upload-label').innerHTML = `<strong>${esc(file.name)}</strong> — ${clayData.rows.length.toLocaleString()} rows, ${clayData.headers.length} columns`;
+      document.getElementById('step1-num').classList.add('done');
+      document.getElementById('step1-num').textContent = '\u2713';
+
+      // Show column picker
+      document.getElementById('step2').classList.remove('hidden');
+      document.getElementById('column-picker').classList.remove('hidden');
+      const select = document.getElementById('column-select');
+      select.innerHTML = '<option value="">-- Pick the column with domain or website --</option>';
+
+      // Try to auto-detect a domain/website column
+      let autoIdx = -1;
+      const hints = ['domain', 'website', 'url', 'site', 'web', 'homepage', 'company domain', 'company website', 'company url'];
+      clayData.headers.forEach((h, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = `${h} (e.g. "${clayData.rows[0] ? clayData.rows[0][i] || '' : ''}")`;
+        select.appendChild(opt);
+        if (autoIdx === -1 && hints.some(hint => h.toLowerCase().includes(hint))) autoIdx = i;
+      });
+
+      if (autoIdx >= 0) {
+        select.value = autoIdx;
+        onColumnSelected();
+      }
+    } catch (err) {
+      setStatus('Error reading CSV: ' + err.message, true, 'whatsnew-status');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function onColumnSelected() {
+  const idx = parseInt(document.getElementById('column-select').value);
+  if (isNaN(idx)) {
+    document.getElementById('whatsnew-btn').disabled = true;
+    document.getElementById('column-preview').textContent = '';
+    return;
+  }
+
+  // Show a few sample values
+  const samples = clayData.rows.slice(0, 5).map(r => r[idx] || '(empty)');
+  document.getElementById('column-preview').textContent = `Sample values: ${samples.join(', ')}`;
+
+  document.getElementById('step3-actions').classList.remove('hidden');
+  document.getElementById('whatsnew-btn').disabled = false;
+}
+
+async function findNewCompanies() {
+  const btn = document.getElementById('whatsnew-btn');
+  btn.disabled = true;
+  newResults = [];
+
+  try {
+    const colIdx = parseInt(document.getElementById('column-select').value);
+
+    // Extract domains from Clay CSV
+    const clayDomains = new Set();
+    clayData.rows.forEach(row => {
+      const val = row[colIdx] || '';
+      const domain = extractDomain(val);
+      if (domain) clayDomains.add(domain);
+    });
+
+    setStatus(`Found ${clayDomains.size.toLocaleString()} domains in your Clay table. Fetching all YC companies...`, false, 'whatsnew-status');
+
+    // Fetch ALL YC companies (no filters)
+    const hits = await fetchAllWithFilters([], 'whatsnew-status', 'whatsnew-');
+    showProgress(100, 'whatsnew-');
+
+    const allYc = hits.map(companyToRow);
+
+    // Find companies whose domain is NOT in Clay
+    newResults = allYc.filter(r => {
+      if (!r.domain) return true; // no domain = include it, user can decide
+      return !clayDomains.has(r.domain);
+    });
+
+    // Show stats
+    document.getElementById('stat-clay').textContent = clayDomains.size.toLocaleString();
+    document.getElementById('stat-yc').textContent = allYc.length.toLocaleString();
+    document.getElementById('stat-new').textContent = newResults.length.toLocaleString();
+    document.getElementById('whatsnew-stats').classList.remove('hidden');
+
+    // Show results
+    if (newResults.length > 0) {
+      document.getElementById('whatsnew-results-title').textContent = `${newResults.length.toLocaleString()} New Companies Not in Your Clay Table`;
+      renderTable(newResults.slice(0, 200), 'whatsnew-results-body');
+      document.getElementById('whatsnew-results').classList.remove('hidden');
+      setStatus(
+        newResults.length > 200
+          ? `Showing first 200 of ${newResults.length.toLocaleString()}. Download the CSV for the full list.`
+          : `Found ${newResults.length.toLocaleString()} new companies!`,
+        false, 'whatsnew-status'
+      );
+    } else {
+      document.getElementById('whatsnew-results').classList.add('hidden');
+      setStatus('Your Clay table is up to date! No new YC companies found.', false, 'whatsnew-status');
+    }
+
+  } catch (e) {
+    setStatus('Error: ' + e.message, true, 'whatsnew-status');
+  } finally {
+    btn.disabled = false;
+    hideProgress('whatsnew-');
+  }
+}
+
+// ─── CSV download ───
+function buildCsvString(rows) {
+  const headers = ['company_name', 'domain', 'website', 'one_liner', 'batch', 'industry', 'location', 'tags', 'team_size', 'status', 'yc_url'];
+  return [
+    headers.join(','),
+    ...rows.map(row => headers.map(h => {
+      let v = (row[h] ?? '').toString();
+      if (v.includes(',') || v.includes('"') || v.includes('\n')) v = '"' + v.replace(/"/g, '""') + '"';
+      return v;
+    }).join(','))
+  ].join('\n');
+}
+
+function downloadCsv(rows, name) {
+  if (!rows || !rows.length) return;
+  const blob = new Blob([buildCsvString(rows)], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${name}_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── Init ───
+loadFacets();
+</script>
+
+</body>
+</html>

@@ -526,7 +526,15 @@ function parseCsv(text) {
         if (text[i + 1] === '"') { current += '"'; i++; }
         else inQuotes = false;
       } else {
-        current += ch;
+        // Inside quotes: newlines become spaces (flatten multi-line fields)
+        if (ch === '\r') {
+          current += ' ';
+          if (text[i + 1] === '\n') i++;
+        } else if (ch === '\n') {
+          current += ' ';
+        } else {
+          current += ch;
+        }
       }
     } else {
       if (ch === '"') { inQuotes = true; }
@@ -536,6 +544,10 @@ function parseCsv(text) {
         if (row.some(c => c !== '')) lines.push(row);
         row = []; current = '';
         if (ch === '\r') i++;
+      } else if (ch === '\r') {
+        row.push(current.trim());
+        if (row.some(c => c !== '')) lines.push(row);
+        row = []; current = '';
       } else {
         current += ch;
       }
@@ -623,7 +635,7 @@ async function findNewCompanies() {
   try {
     const colIdx = parseInt(document.getElementById('column-select').value);
 
-    // Extract domains AND company names from Clay CSV
+    // Normalize uploaded CSV: if domain column selected, just extract clean domains
     const clayDomains = new Set();
     const clayNames = new Set();
     // Also try to find a company_name column
@@ -697,8 +709,8 @@ function buildCsvString(rows) {
   return [
     headers.join(','),
     ...rows.map(row => headers.map(h => {
-      let v = (row[h] ?? '').toString();
-      if (v.includes(',') || v.includes('"') || v.includes('\n')) v = '"' + v.replace(/"/g, '""') + '"';
+      let v = (row[h] ?? '').toString().replace(/[\r\n]+/g, ' ').trim();
+      if (v.includes(',') || v.includes('"')) v = '"' + v.replace(/"/g, '""') + '"';
       return v;
     }).join(','))
   ].join('\n');
